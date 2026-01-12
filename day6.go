@@ -24,7 +24,7 @@ func main() {
 				}
 			}
 		}
-		if found && i > len(buffer)-1 {
+		if found && i >= len(buffer) {
 			answer = i + 1
 			break
 		}
