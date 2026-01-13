@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -102,7 +103,7 @@ func main() {
 
 	unusedSpace := 70000000 - rootDir.size
 	extraSpaceRequired := 30000000 - unusedSpace
-	sizeOfSmallestDir := 70000000
+	sizeOfSmallestDir := math.MaxInt
 
 	var findDirToDelete func(d dir)
 	findDirToDelete = func(d dir) {
