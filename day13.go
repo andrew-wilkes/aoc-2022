@@ -62,9 +62,16 @@ func main() {
 }
 
 func isInOrder(a, b listItem) order {
+	if a.empty && len(a.list) != 0 {
+		fmt.Println(a)
+		panic(a)
+	}
 	var l1, l2 list
 	switch {
 	case len(a.list) > 0:
+		if b.empty {
+			return OUTOFORDER
+		}
 		l1 = a.list
 		if len(b.list) > 0 {
 			l2 = b.list
@@ -72,6 +79,9 @@ func isInOrder(a, b listItem) order {
 			l2 = list{b}
 		}
 	case len(b.list) > 0:
+		if a.empty {
+			return INORDER
+		}
 		l1 = list{a}
 		l2 = b.list
 	default:
@@ -96,9 +106,9 @@ func isInOrder(a, b listItem) order {
 		}
 	}
 	if len(l2) > len(l1) {
-		return OUTOFORDER
+		return INORDER
 	}
-	return INORDER
+	return UNDECIDED
 }
 
 func parsePacketStr(s string) listItem {
@@ -123,7 +133,7 @@ func parsePacketStr(s string) listItem {
 				} else if r2 == ']' {
 					if level == 0 {
 						if j == 0 {
-							thisItem.empty = true
+							thisItem.list = append(thisItem.list, listItem{empty: true})
 						} else {
 							thisItem.list = append(thisItem.list, parsePacketStr(s[i:i+j]))
 						}
