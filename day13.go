@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -16,6 +17,7 @@ const (
 	OUTOFORDER
 )
 
+// I love Gos easy way to create custom types. No excuse not to do so.
 type packetPairStr struct {
 	left, right string
 }
@@ -29,7 +31,7 @@ type listItem struct {
 type list []listItem
 
 func main() {
-	file, _ := os.Open("example.txt")
+	file, _ := os.Open("input.txt")
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 
@@ -50,28 +52,60 @@ func main() {
 		}
 	}
 
+	packets := []listItem{parsePacketStr("[[2]]"), parsePacketStr("[[6]]")} // Add markers for part 2
 	sumOfIndicesInRightOrder := 0
 	for i, pps := range packetPairStrs {
 		p1 := parsePacketStr(pps.left)
 		p2 := parsePacketStr(pps.right)
-		if isInOrder(p1, p2) == INORDER {
+		if isInOrder(p1.list[0], p2.list[0]) == INORDER {
 			sumOfIndicesInRightOrder += i + 1
 		}
+		packets = append(packets, p1, p2) // Needed for part 2
 	}
 	fmt.Printf("Part 1 answer = %d\n", sumOfIndicesInRightOrder)
+
+  // Part 2
+  
+	// I'm leveraging the SortFunc rather than rolling my own sort algorithm code.
+	slices.SortFunc(packets, func(a, b listItem) int {
+		switch isInOrder(a, b) {
+		case INORDER:
+			return -1
+		case OUTOFORDER:
+			return 1
+		}
+		return 0
+	})
+
+	// This is a new thing that I tried recenty: function variables.
+	// They allow for inlining functions and making use of the closure (access to outer scoped vars) properties of Go functions.
+	findMarker := func(n int) int {
+		return slices.IndexFunc(packets, func(l listItem) bool { // Another anonymous function ;-)
+			// Kind of ugly, but it is specific to my data structure. Saves doing some crazy recursion.
+			if len(l.list) == 1 && len(l.list[0].list) == 1 && len(l.list[0].list[0].list) == 1 {
+				if l.list[0].list[0].list[0].value == n {
+					return true
+				}
+			}
+			return false
+		})
+	}
+	i1 := findMarker(2) + 1
+	i2 := findMarker(6) + 1
+	fmt.Printf("Part 2 answer = %v\n", i1*i2)
 }
 
+// So many conditions to check!
 func isInOrder(a, b listItem) order {
-	if a.empty && len(a.list) != 0 {
-		fmt.Println(a)
-		panic(a)
-	}
 	var l1, l2 list
 	switch {
+	case a.empty && b.empty:
+		return UNDECIDED
+	case a.empty:
+		return INORDER
+	case b.empty:
+		return OUTOFORDER
 	case len(a.list) > 0:
-		if b.empty {
-			return OUTOFORDER
-		}
 		l1 = a.list
 		if len(b.list) > 0 {
 			l2 = b.list
@@ -79,9 +113,6 @@ func isInOrder(a, b listItem) order {
 			l2 = list{b}
 		}
 	case len(b.list) > 0:
-		if a.empty {
-			return INORDER
-		}
 		l1 = list{a}
 		l2 = b.list
 	default:
@@ -111,6 +142,27 @@ func isInOrder(a, b listItem) order {
 	return UNDECIDED
 }
 
+// I wrote this function to check the integrity of my parser
+func printList(li listItem) {
+	if li.empty {
+		fmt.Print("[]")
+		return
+	}
+	if len(li.list) == 0 {
+		fmt.Print(li.value)
+		return
+	}
+	fmt.Print("[")
+	for i, l := range li.list {
+		printList(l)
+		if i < len(li.list)-1 {
+			fmt.Print(",")
+		}
+	}
+	fmt.Print("]")
+}
+
+// Just parsing the data was challenging here!
 func parsePacketStr(s string) listItem {
 	thisItem := listItem{}
 	digits := []string{}
