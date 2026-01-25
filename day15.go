@@ -27,6 +27,7 @@ func main() {
 	scanner := bufio.NewScanner(file)
 
 	sensors := []sensor{}
+	// Using regular expressions to simplify pulling out the data from the input text
 	r, _ := regexp.Compile("Sensor at x=([-0-9]+), y=([-0-9]+): closest beacon is at x=([-0-9]+), y=([-0-9]+)")
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -37,7 +38,7 @@ func main() {
 	// Part 1
 	lines := []line{}
 	beaconsOnLine := map[point]bool{}
-	const loi = 2000000
+	const loi = 2000000 // loi means line of interest
 	for _, s := range sensors {
 		if s.beacon.y == loi {
 			beaconsOnLine[s.beacon] = true
@@ -47,9 +48,11 @@ func main() {
 			lines = append(lines, line)
 		}
 	}
+	// It will be easier later if the lines are arranged such that the left-most point comes first
 	slices.SortFunc(lines, func(l, m line) int {
 		return l.a.x - m.a.x
 	})
+	// We don't want to count positions on the line that contain a known beacon
 	sum := -len(beaconsOnLine)
 	xp := 0
 	// Merge lines
@@ -71,7 +74,8 @@ func main() {
 
 	// Part 2
 	const limit = 4000000
-	rows := map[int][]line{}
+	rows := map[int][]line{} // Use a map to easily add extra lines to an exisiting row record
+	// Build lines of sensing ranges for each sensor
 	for _, s := range sensors {
 		dist := mdist(s.pos, s.beacon)
 		for x := range dist + 1 {
@@ -85,7 +89,7 @@ func main() {
 			}
 		}
 	}
-	var db point
+	var db point // The sole location of the distress beacon
 outer:
 	for i := range rows {
 		slices.SortFunc(rows[i], func(l, m line) int {
@@ -94,7 +98,8 @@ outer:
 		for j, l := range rows[i] {
 			if j > 0 {
 				if l.a.x > xp {
-					if l.a.x-xp > 1 {
+					if l.a.x-xp > 1 { // There is a gap in the sensor range
+						// Check that it is within the required range of x,y
 						if xp < 4000000 && xp > -1 && i <= 4000000 && i > -1 {
 							db = point{xp + 1, i}
 							break outer
@@ -114,6 +119,7 @@ outer:
 	fmt.Printf("Part 2 answer = %d\n", db.x*4000000+db.y)
 }
 
+// Using defined return vars that have zero values at the start of the function.
 func coverage(p point, dist, y int) (line line, ok bool) {
 	yd := p.y - y
 	if yd < 0 {
@@ -128,6 +134,7 @@ func coverage(p point, dist, y int) (line line, ok bool) {
 	return
 }
 
+// I don't think that Go has an Absolute value function for integers, hence some of this code. 
 func mdist(a, b point) int {
 	x := a.x - b.x
 	if x < 0 {
@@ -140,7 +147,8 @@ func mdist(a, b point) int {
 	return x + y
 }
 
+// A simple utility function to simplify code above.
 func num(s string) int {
-	n, _ := strconv.Atoi(s)
+	n, _ := strconv.Atoi(s) // Assume that there will be no error or else we should get a panic.
 	return n
 }
