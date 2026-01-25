@@ -38,12 +38,12 @@ func main() {
 	// Part 1
 	lines := []line{}
 	beaconsOnLine := map[point]bool{}
-	const loi = 2000000 // loi means line of interest.
+	const LineOfInterest = 2000000
 	for _, s := range sensors {
-		if s.beacon.y == loi {
+		if s.beacon.y == LineOfInterest {
 			beaconsOnLine[s.beacon] = true
 		}
-		line, ok := coverage(s.pos, mdist(s.pos, s.beacon), loi)
+		line, ok := coverage(s.pos, mdist(s.pos, s.beacon), LineOfInterest)
 		if ok {
 			lines = append(lines, line)
 		}
@@ -73,18 +73,18 @@ func main() {
 	fmt.Printf("Part 1 answer = %d\n", sum)
 
 	// Part 2
-	const limit = 4000000
+	const Limit = 4000000
 	rows := map[int][]line{} // Use a map to easily add extra lines to an exisiting row record.
 	// Build lines of sensing ranges for each sensor.
 	for _, s := range sensors {
 		dist := mdist(s.pos, s.beacon)
 		for x := range dist + 1 {
 			y := s.pos.y + x
-			if y >= 0 && y <= limit {
+			if y >= 0 && y <= Limit {
 				rows[y] = append(rows[y], line{point{s.pos.x - dist + x, y}, point{s.pos.x + dist - x, y}})
 			}
 			y = s.pos.y - x
-			if y >= 0 && y <= limit && x > 0 {
+			if y >= 0 && y <= Limit && x > 0 {
 				rows[y] = append(rows[y], line{point{s.pos.x - dist + x, y}, point{s.pos.x + dist - x, y}})
 			}
 		}
@@ -100,7 +100,7 @@ outer:
 				if l.a.x > xp {
 					if l.a.x-xp > 1 { // There is a gap in the sensor range.
 						// Check that it is within the required range of x,y.
-						if xp < limit && xp > -1 && i <= limit && i > -1 {
+						if xp < Limit && xp > -1 && i <= Limit && i > -1 {
 							db = point{xp + 1, i}
 							break outer
 						} else {
@@ -116,7 +116,7 @@ outer:
 			}
 		}
 	}
-	fmt.Printf("Part 2 answer = %d\n", db.x*limit+db.y)
+	fmt.Printf("Part 2 answer = %d\n", db.x*Limit+db.y)
 }
 
 // Using defined return vars that have zero values at the start of the function.
