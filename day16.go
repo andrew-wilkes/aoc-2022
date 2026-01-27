@@ -71,8 +71,8 @@ func main() {
 		if time == 30 {
 			if totalPressure > maxPressure {
 				maxPressure = totalPressure
-				return
 			}
+			return
 		} else {
 			if valveClosed {
 				// Open valve
