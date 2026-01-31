@@ -9,89 +9,113 @@ import (
 	"strings"
 )
 
-type node struct {
+type valve struct {
 	flowRate int
 	tunnels  []string // IDs of connected nodes
+	open     *bool
+}
+
+type cave struct {
+	valveId          string
+	minute           int
+	pressRelief      int
+	totalPressRelief int
 }
 
 func main() {
 	file, _ := os.Open("example.txt")
 	defer file.Close()
 
-	nodes := map[string]node{}
+	valves := map[string]valve{}
 	scanner := bufio.NewScanner(file)
 	r, _ := regexp.Compile("Valve ([A-Z]+) has flow rate=([0-9]+); tunnels? leads? to valves? (.+)")
 	for scanner.Scan() {
 		line := scanner.Text()
 		m := r.FindStringSubmatch(line)
-		node := node{num(m[2]), strings.Split(m[3], ", ")}
-		nodes[m[1]] = node
+		valves[m[1]] = valve{num(m[2]), strings.Split(m[3], ", "), new(bool)}
 	}
 
 	// Part 1
-	// Evaluate all paths through the graph up to 30 steps
 
-	paths := [][]string{}
-	var tracer func(nodeId string, time int, path []string)
-	tracer = func(nodeId string, time int, path []string) {
-		path = append(path, nodeId)
-		time++
-		if time > 30 {
-			p := make([]string, len(path))
-			copy(p, path)
-			paths = append(paths, p)
-			return
-		}
-		end := true
-	outer:
-		for _, id := range nodes[nodeId].tunnels {
-			i := len(path) - 2
-			for i > 0 {
-				if path[i] == id && path[i-1] == nodeId {
-					continue outer
-				}
-				i--
-			}
-			tracer(id, time, path)
-			end = false
-		}
-		if end {
-			p := make([]string, len(path))
-			copy(p, path)
-			paths = append(paths, p)
+	// Build a distance map for distances between nodes that have working valves including AA
+	distances := map[string]map[string]int{}
+
+	for id, n := range valves {
+		if n.flowRate > 0 || id == "AA" {
+			addDistances(id, distances, valves)
 		}
 	}
-	tracer("AA", 0, []string{})
 
-	// Apply valve on/off through each path to find the highest value of pressure release within 30 mins.
-	maxPressure := 0
-	var valves func(idx int, currentPressure, totalPressure, time int, valveClosed bool, path []string)
-	valves = func(idx int, currentPressure, totalPressure, time int, valveClosed bool, path []string) {
-		totalPressure += currentPressure
-		if time == 30 {
-			if totalPressure > maxPressure {
-				maxPressure = totalPressure
-			}
-			return
-		} else {
-			if valveClosed {
-				// Open valve
-				flowRate := nodes[path[idx]].flowRate
-				if flowRate > 0 {
-					valves(idx, flowRate+currentPressure, totalPressure, time+1, false, path)
+	maxPressureRelief := dfsTunnels(distances, valves)
+
+	//	testPath := []string{"AA", "DD", "CC", "BB", "AA", "II", "JJ", "II", "AA", "DD", "EE", "FF", "GG", "HH", "GG", "FF", "EE", "DD", "CC"}
+
+	fmt.Printf("Part 1 answer = %d\n", maxPressureRelief)
+}
+
+func dfsTunnels(distances map[string]map[string]int, valves map[string]valve) int {
+	stack := []cave{{valveId: "AA", minute: 1}}
+	maxPressureRelief := 0
+	for len(stack) > 0 {
+		idx := len(stack) - 1
+		c := stack[idx] // pop cave status off stack
+		stack = stack[:idx]
+
+		if !*valves[c.valveId].open {
+			*valves[c.valveId].open = true
+			c.pressRelief += valves[c.valveId].flowRate
+		}
+		atEnd := true
+		if c.minute < 30 {
+			for id, d := range distances[c.valveId] {
+				if c.minute+d <= 30 {
+					atEnd = false
+					stack = append(stack, cave{id, c.minute + d, c.pressRelief, c.totalPressRelief + d*c.pressRelief})
 				}
 			}
-			idx++
-			if idx < len(path) {
-				// Move
-				valves(idx, currentPressure, totalPressure, time+1, true, path)
+		}
+		if atEnd {
+			remainingMinutes := 30 - c.minute
+			c.totalPressRelief += c.pressRelief * remainingMinutes
+			if c.totalPressRelief > maxPressureRelief {
+				maxPressureRelief = c.totalPressRelief
+				fmt.Println(maxPressureRelief)
 			}
 		}
 	}
-	for _, path := range paths {
-		valves(0, 0, 0, 1, false, path)
+	return maxPressureRelief
+}
+
+func addDistances(id string, distances map[string]map[string]int, valves map[string]valve) {
+	distances[id] = map[string]int{}
+	for nid, valve := range valves {
+		if nid != id && valve.flowRate > 0 {
+			if distances[nid] != nil && distances[nid][id] != 0 {
+				distances[id][nid] = distances[nid][id]
+				continue
+			}
+			distances[id][nid] = getDistanceBFS(id, nid, valves)
+		}
 	}
-	fmt.Printf("Part 1 answer = %d\n", maxPressure)
+}
+
+func getDistanceBFS(a, b string, valves map[string]valve) int {
+	q := []string{a}
+	dist := map[string]int{a: 0}
+	for len(q) > 0 {
+		nid := q[0]
+		d := dist[nid]
+		if nid == b {
+			return d
+		}
+		q = q[1:]
+		d++
+		for _, id := range valves[nid].tunnels {
+			q = append(q, id)
+			dist[id] = d
+		}
+	}
+	return 0
 }
 
 // A simple utility function to simplify code above.
